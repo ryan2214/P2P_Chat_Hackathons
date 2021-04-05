@@ -19,4 +19,4 @@ SQL Lite: Store chat content locally.
 
 Socket: Receive online/offline status sent by users.
 
-Python Program: Keep track of all the users status (online/offline).
+SQL Lite: Keep track of all the users status (online/offline).
