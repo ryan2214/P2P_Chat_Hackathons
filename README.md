@@ -15,7 +15,7 @@ Flask Web Application: Interface for chat, (multiple user), show recent chat, ac
 
 Web SQL: Store chat content locally, impl by js.
 
-          message table: seqNum, direction, peerID, isShipped, timeStamp,  content
+          message table: ~~seqNum~~, direction, peerID, isShipped, timeStamp,  content
           
           peer table: peerID, peerAddr
 
