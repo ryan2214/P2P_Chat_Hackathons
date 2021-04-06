@@ -13,7 +13,7 @@ Socket: send msg by IP to other peers,
 
 Flask Web Application: Interface for chat, (multiple user), show recent chat, access to chat history.
 
-SQL Lite: Store chat content locally.
+Web SQL: Store chat content locally, impl by js.
 
           message table: seqNum, direction, peerID, isShipped, timeStamp,  content
           
