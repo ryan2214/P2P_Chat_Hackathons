@@ -1,0 +1,231 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <time></time>
+    <title>P2P Chat</title>
+    <script src="{{url_for('static',filename ='scripts/jquery-3.6.0.js')}}" type="text/javascript"></script>
+    <!--<script src="{{url_for('static',filename ='scripts/script_v1.1.js')}}" type="text/javascript"></script>-->
+    
+    <style type="text/css">
+
+    html,
+    body {
+        padding: 0px;
+        margin: 0px;
+        font-family: 'Karla', sans-serif;
+        color: #FFF;
+        background: url(static/background/jill.gif);
+        background-size:1920px 1080px;
+        background-position:center 0;
+        background-attachment:fixed;
+    }
+    h1 {
+        text-align: center;
+    }
+    ::-webkit-scrollbar {
+        width: 8px
+    }
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 0px 2px 2px 0px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.5);
+    }
+    .container {
+        margin: 20px auto;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        max-width: 600px;
+        background: #167cac;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.25);
+        border-radius: 3px;
+        animation: flyin 0.75s;
+    }
+    .container .messages {
+        height: 250px;
+        margin: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        overflow-y: scroll;
+        border-radius: 2px;
+    }
+    .container .messages .message {
+        padding: 10px;
+        animation: fade 0.25s;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .container .input {
+        display: flex;
+        margin: 0px 20px 20px 20px;
+    }
+    .container .input .btn,
+    .container .input .emoji-btn {
+        height: 40px;
+        line-height: 40px;
+        width: 75px;
+        text-align: center;
+        background: #222;
+        border-radius: 2px;
+        margin-left: 10px;
+        position: relative;
+        cursor: pointer;
+    }
+    .container .input .btn:hover {
+        background: #333;
+        cursor: pointer;
+    }
+    .container .input input {
+        border-radius: 2px;
+        margin-right: 0px;
+        border: none;
+        width: 100%;
+        flex: 1;
+        padding: 0px 20px;
+        background: #222;
+        color: white;
+        font-weight: 600;
+        outline: none;
+    }
+    @keyframes fade {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    @keyframes flyin {
+        from {
+            transform: translateY(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0px);
+            opacity: 1;
+        }
+    }
+    </style>
+</head>
+    <body>
+        <h1>P2P Chat as {{username}}</h1>
+        <div class="container">
+            <div class="messages">
+                <div class="message"></div>
+            </div>
+            <div class="input">
+                <input type="text" id="msgcontent" placeholder="Type message here!" />
+                
+                <div class="btn" id="btnSave">Send</div>
+            </div>
+        </div>            
+    </body>
+
+    <script type = "text/javascript">
+    
+        var messages = document.querySelector('.messages')
+        var btn = document.querySelector('.btn')
+        var input = document.querySelector('.input input')
+    
+        // Button/Enter Key
+        btn.addEventListener('click', sendMessage)
+        input.addEventListener('keyup', function(evt) {
+            if (evt.keyCode == 13) sendMessage()
+        })
+    
+        // Messenger Functions
+        function sendMessage() {
+            var msg = input.value;
+            input.value = ''
+            writeLine(sessionStorage.username,msg)
+            saveLine(msg)
+        }
+    
+        function addMessage(evt) {
+            console.log(evt);
+            var msg = evt.data ? JSON.parse(evt.data) : evt;
+            writeLine(`${msg.FROM}: ${msg.MESSAGE}`)
+        }
+    
+        function writeLine(sender,text) {
+            var message = document.createElement('div')
+            message.classList.add('message')
+            message.innerHTML = sender+': ' + text
+            messages.appendChild(message)
+            messages.scrollTop = messages.scrollHeight;
+        }
+    
+        function saveLine(text) {
+            var time = new Date();
+            var toID = "B";
+            var fromID = sessionStorage.username;
+            var timeStamp = time.toLocaleString('en',{ hour12: false });
+            var db = getCurrentDb();
+            //insert
+            initDatabase()
+            db.transaction(function (trans) {
+                trans.executeSql("insert into msg(fromID,toID,dir,sendTime,isShipped,content) values(?,?,?,?,?,?) ", [fromID, toID, "o",timeStamp,"0", text], function (ts, data) {
+                }, function (ts, message) {
+                    alert(message);
+                });
+            });
+        }
+    
+    
+        function initDatabase() {// local db init
+            var db = getCurrentDb();
+            if(!db) {
+                alert("your browser does not supply HTML5");
+                return;
+            }
+            db.transaction(function (trans) {
+                trans.executeSql("create table if not exists msg(fromID text null,toID text null,dir text null,sendTime text null,isShipped text null,content text null)", [], function (trans, result) {
+                    
+                }, function (trans, message) {
+                    alert(message);
+                });
+            }, function (trans, result) {
+            }, function (trans, message) {
+            });
+        }
+    
+        function delDatabase() {
+            var db = getCurrentDb();
+            var r=confirm("really? This action can not be undo.")
+            if (r==true){
+                db.transaction(function (trans) {
+                    trans.executeSql("drop table msg")    
+                }) 
+            }
+        }
+    
+        function getCurrentDb() {
+            // db init from here
+            var db = openDatabase("p2pChatDb", "1.0", "time to save some data!", 1024 * 1024);
+            return db;
+        }
+    
+        function showAllTheData() {
+            initDatabase();
+            var db = getCurrentDb();
+            db.transaction(function (trans) {
+                trans.executeSql("select fromID,content from msg", [], function (ts, data) {
+                    if (data) {
+                        for (var i = 0; i < data.rows.length; i++) {
+                            writeLine(data.rows.item(i).fromID,data.rows.item(i).content)
+                            //appendDataToTable(data.rows.item(i));
+                        }
+                    }
+                }, function (ts, message) {
+                    alert(message);
+                    var tst = message;
+                });
+    
+            });
+        }
+        
+        window.onload=function()
+        {
+            //do something
+            showAllTheData();
+        }
+        </script>
+</html>
