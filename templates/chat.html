@@ -51,6 +51,7 @@
     .container .messages .message {
         padding: 10px;
         animation: fade 0.25s;
+        word-wrap:break-word;
         border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
     .container .input {
@@ -135,11 +136,12 @@
         function sendMessage() {
             var msg = input.value;
             input.value = ''
-            writeLine(sessionStorage.username,msg)
-            saveLine(msg)
+            writeLine(sessionStorage.username, msg)         // write to the chatbox
+            saveLine(sessionStorage.username, "B", msg)     // store to web SQL   *TODO: get target from user choice
+                                                            // TODO: send by socket
         }
     
-        function addMessage(evt) {
+        function addMessage(evt) {                 // TODO: need to co-op with socket function
             console.log(evt);
             var msg = evt.data ? JSON.parse(evt.data) : evt;
             writeLine(`${msg.FROM}: ${msg.MESSAGE}`)
@@ -153,11 +155,9 @@
             messages.scrollTop = messages.scrollHeight;
         }
     
-        function saveLine(text) {
+        function saveLine(fromID,toID,text) {
             var time = new Date();
-            var toID = "B";
-            var fromID = sessionStorage.username;
-            var timeStamp = time.toLocaleString('en',{ hour12: false });
+            var timeStamp = time.toLocaleString('en',{ hour12: false });  // stamp whem the msg is sent by user
             var db = getCurrentDb();
             //insert
             initDatabase()
