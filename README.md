@@ -30,6 +30,7 @@ https://p2p-chat-ec500.herokuapp.com/
 ```
 git add .
 git commit -m "[details of commit]"
+git push origin [current branch]
 git push heroku [current branch]:main
 ```
 
