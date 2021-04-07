@@ -203,11 +203,11 @@
             return db;
         }
     
-        function showAllTheData() {
+        function showAllTheData(target) { // for the very user, show the chat history
             initDatabase();
             var db = getCurrentDb();
             db.transaction(function (trans) {
-                trans.executeSql("select fromID,content from msg", [], function (ts, data) {
+                trans.executeSql("select fromID,content from msg where (fromID=? or toID = ?)", [target,target], function (ts, data) {
                     if (data) {
                         for (var i = 0; i < data.rows.length; i++) {
                             writeLine(data.rows.item(i).fromID,data.rows.item(i).content)
@@ -225,7 +225,7 @@
         window.onload=function()
         {
             //do something
-            showAllTheData();
+            showAllTheData("B");
         }
         </script>
 </html>
