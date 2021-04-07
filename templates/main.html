@@ -26,6 +26,7 @@
         border-radius: 3px;
         animation: flyin 0.75s;
 		  }
+      form .input2,
       form .input{
         display: flex;
         margin: 0px 20px 20px 20px;
@@ -45,6 +46,7 @@
           background: rgb(80, 80, 80);
           cursor: pointer;
       }
+      form .input2 input,
       form .input input {
         border-radius: 2px;
         margin-right: 0px;
@@ -80,12 +82,17 @@
         <input type="text" name="username" id="username" placeholder="username"/>
         <input type="submit" value="Login" class="button-new"/>
     </div>
+    <div class="input2">
+        <input oninput = "value=value.replace(/[^\d]/g,'')" name="myPort" placeholder="your socket port" />
+    </div>
+    
 </form>
 
 </body>
 <script type = "text/javascript">
     var btn = document.querySelector('.button-new')
     var username =  document.getElementById("username")
+    var myPort = document.querySelector("div.input2 input[name='myPort']")
     window.onload=function()
     {
         //do something
@@ -94,6 +101,7 @@
     
     function sendMessage() {
         sessionStorage.username = username.value;
+        sessionStorage.myPort = myPort.value;
     }
 </script>
 </html>
