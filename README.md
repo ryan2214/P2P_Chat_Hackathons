@@ -6,7 +6,7 @@ Team 10
 
 # Build instruction
 
-run "python p2p_chat.py" and visit 127.0.0.1:80 by your browser
+go to the project folder, run "python p2p_chat.py" and visit 127.0.0.1:80 by your browser
 
 # Suggested Roles:
 
