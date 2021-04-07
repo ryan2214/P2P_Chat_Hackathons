@@ -8,6 +8,10 @@ Team 10
 
 go to the project folder, run "python p2p_chat.py" and visit 127.0.0.1:80 by your browser
 
+
+![preview_0](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_0.png?raw=true)
+
+
 # Suggested Roles:
 
 ## User:
@@ -21,6 +25,8 @@ Web SQL: Store chat content locally, impl by js.
           message table: fromID, toID, direction, isShipped, timeStamp,  content
           
           peer table: peerID, peerAddr
+
+![preview_1](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_1.png?raw=true)
 
 ## Server:
 
