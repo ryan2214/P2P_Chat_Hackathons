@@ -4,9 +4,24 @@ Team 10
 - Tianhe Lei
 - Mella Liang
 
+# Initial Setup 
+```
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+### To save imports
+- After you install something, update list of imports:
+```
+pip freeze > requirements.txt
+```
 # Build instruction
-
-go to the project folder, run "python p2p_chat.py" and visit 127.0.0.1:80 by your browser
+Make sure you are in the project folder
+```
+source venv/bin/activate
+python3 p2p_chat.py
+```
+Then visit 127.0.0.1:80 in your browser
 
 
 ![preview_0](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_0.png?raw=true)
