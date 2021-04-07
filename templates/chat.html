@@ -4,7 +4,6 @@
     <time></time>
     <title>P2P Chat</title>
     <script src="{{url_for('static',filename ='scripts/jquery-3.6.0.js')}}" type="text/javascript"></script>
-    <script src="{{url_for('static',filename ='scripts/require.js')}}" type="text/javascript"></script>
     <!--<script src="{{url_for('static',filename ='scripts/script_v1.1.js')}}" type="text/javascript"></script>-->
     
     <style type="text/css">
@@ -55,8 +54,7 @@
         word-wrap:break-word;
         border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
-    .container .input,
-    .container .input2 {
+    .container .input {
         display: flex;
         margin: 0px 20px 20px 20px;
     }
@@ -76,7 +74,6 @@
         background: #333;
         cursor: pointer;
     }
-    .container .input2 input,
     .container .input input {
         border-radius: 2px;
         margin-right: 0px;
@@ -117,40 +114,27 @@
             </div>
             <div class="input">
                 <input type="text" id="msgcontent" placeholder="Type message here!" />
-                <div class="btn" id="btnSave">Send</div>
-            </div>
-            <div class="input2">
                 
-                <input oninput = "value=value.replace(/[^\d]/g,'')" name="tarPort" placeholder="target socket port" />
+                <div class="btn" id="btnSave">Send</div>
             </div>
         </div>            
     </body>
 
     <script type = "text/javascript">
-        
+    
         var messages = document.querySelector('.messages')
         var btn = document.querySelector('.btn')
         var input = document.querySelector('.input input')
-        var tarPort = document.querySelector("div.input2 input[name='tarPort']")
-
+    
         // Button/Enter Key
         btn.addEventListener('click', sendMessage)
         input.addEventListener('keyup', function(evt) {
             if (evt.keyCode == 13) sendMessage()
         })
-
+    
         // Messenger Functions
         function sendMessage() {
             var msg = input.value;
-            var myp = sessionStorage.myPort;
-            var tar = tarPort.value;
-
-            //var WebSocketServer = require('wss').Server;
-            //var wss = new WebSocketServer({ port:myp });
-            var clients=[];
-
-            var tarurl = 'wss://localhost:'+ tar;
-            var mySocket = new WebSocket(tarurl, ['soap', 'xmpp']);
             input.value = ''
             writeLine(sessionStorage.username, msg)         // write to the chatbox
             saveLine(sessionStorage.username, "B", msg)     // store to web SQL   *TODO: get target from user choice
