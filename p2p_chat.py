@@ -44,7 +44,21 @@ def chat():
         return render_template('chat.html', username = username)
     return render_template('main.html')
 
+
+import socket 
+
+@app.route('/p2p', methods=['GET'])
+def p2p():
+    socket_server = socket.socket()
+    server_host = socket.gethostname()
+    ip = socket.gethostbyname(server_host)
+
+    print('socket server', socket_server, 'host', server_host, 'ip', ip)
+
+    return ip
+
+
     
 if __name__ == '__main__':
-    # app.debug = True
-    app.run(host='0.0.0.0', port=80, debug=True)
+    # app.run(host='0.0.0.0', port=80, debug=True)
+    app.run(debug=True)
