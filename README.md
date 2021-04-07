@@ -23,6 +23,15 @@ python3 p2p_chat.py
 ```
 Then visit 127.0.0.1:80 in your browser
 
+# Website
+https://p2p-chat-ec500.herokuapp.com/
+- To push to heroku:
+- (create a Heroku account, tell me the email you used to register, and I'll add you as a collaborator so you could update the website)
+```
+git add .
+git commit -m "[details of commit]"
+git push heroku [current branch]:main
+```
 
 ![preview_0](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_0.png?raw=true)
 
