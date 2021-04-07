@@ -4,6 +4,9 @@ Team 10
 - Tianhe Lei
 - Mella Liang
 
+# Build instruction
+
+run "python p2p_chat.py" and visit 127.0.0.1:80 by your browser
 
 # Suggested Roles:
 
