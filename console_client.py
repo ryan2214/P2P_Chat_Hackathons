@@ -145,7 +145,7 @@ def socket_receive_msg(chat_socket):
             print(target_user,'>', raw_msg)
             time_stamp = raw_msg.rsplit(' ',1)[1]
 
-            write_msg_to_db(target_user, user, 0, time_stamp, 1, msg)
+            write_msg_to_db(target_user, user, 0, time_stamp, 1, raw_msg.rsplit(' ',1)[0])
 
 def sig_handler(signum, frame):
     global is_exit
@@ -161,10 +161,13 @@ def show_msg_history(target):
         if m:
             #print(m[1])
             if m[0] == user:
-                print(m[1])
+                print(m[1],'\t',m[2])
             else:
                 content = m[0] + ' >'
-                print(content,m[1])
+                print(content,m[1],'\t',m[2])
+    
+    print('-------------history-------------')
+
 
             
 
@@ -194,7 +197,7 @@ def insert_one_msg(fromID, toID, dir, sendTime, isShipped, content):
 
 def find_msg_about_target(target_username):
     global c
-    result = c.execute('select fromID,content from msg where (fromID=? or toID = ?)',
+    result = c.execute('select fromID,content,sendTime from msg where (fromID=? or toID = ?)',
          (target_username,target_username)).fetchall()
     return result
 
