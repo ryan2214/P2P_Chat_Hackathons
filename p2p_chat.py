@@ -21,7 +21,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 
 ## init a database
 ## store userID table for online/offline discovery
-conn = sqlite3.connect('userIdDb.db')
+#conn = sqlite3.connect('userIdDb.db')
 s = requests.Session()
 ##
 ## Actually setup the Api resource routing here
