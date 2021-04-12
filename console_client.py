@@ -50,10 +50,11 @@ def initialize_socket():
 
 
 def socket_listen(listen_socket, MAX_CONNECTIONS=50):
+    global is_exit
     listen_socket.listen(MAX_CONNECTIONS)
     print('Listening...')
 
-    while True:
+    while not is_exit:
         chat_socket, friend_addr = listen_socket.accept()
         print('Connected to host', friend_addr)
 
@@ -71,7 +72,7 @@ def socket_listen(listen_socket, MAX_CONNECTIONS=50):
 
 
 def socket_connect(chat_socket, PORT):
-        global is_connected,target_user
+        global is_connected,target_user,is_exit
         friend_ip = client[target_user]
         ADDR = (friend_ip, PORT)
 
@@ -80,7 +81,7 @@ def socket_connect(chat_socket, PORT):
         except Exception:
             print(target_user, 'is offline now, prepare to listen.')
         if is_connected:
-            print('connected to ',target_user)
+            print('connected to',target_user)
         
         while is_connected and not is_exit:
             send_msg_thread = Thread(target=socket_send_msg, args=(chat_socket, ))
@@ -96,20 +97,30 @@ def socket_connect(chat_socket, PORT):
 
 def socket_send_msg(chat_socket):
     msg = None
-
-    while msg != '/exit':
+    global is_exit
+    
+    while msg!='/exit' and not is_exit:
         msg = input().strip()
-        chat_socket.send(msg.encode(encode_type))
+        try:
+            chat_socket.send(msg.encode(encode_type))
+        except Exception:
+            print('msg cannot reach',target_user,'for now.')
+            is_exit = True
 
-    sys.exit()
+    is_exit = True
 
 
 # figure out how to end
 def socket_receive_msg(chat_socket):
+    global target_user,is_exit
     while not is_exit:
-        msg = chat_socket.recv(MSG_SIZE)
-        if msg:
-            print('>', msg.decode(encode_type))
+        try:
+            msg = chat_socket.recv(MSG_SIZE)
+        except Exception:
+            print(target_user,'goes offline.')
+            is_exit = True
+        if msg and msg.decode(encode_type)!='/exit' and not is_exit :
+            print(target_user,'>', msg.decode(encode_type))
 
 def sig_handler(signum, frame):
     global is_exit
