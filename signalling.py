@@ -15,9 +15,13 @@ class ClientThread(threading.Thread):
         self.lock = threading.Lock()
         
         while True:
-            message = self.tcpClientSocket.recv(MSG_SIZE).decode().split()
-
-            if message[0] == "register":
+            message = self.tcpClientSocket.recv(MSG_SIZE).decode().split(' ')
+            #print(message)
+            if message[0] == 'login':
+                print(message[1],'login success')
+                #self.tcpClientSocket.send(response.encode())
+            '''
+            elif message[0] == "register":
                 if db.is_account_exist(message[2]):
                     response = "exist"
                 else:
@@ -25,7 +29,7 @@ class ClientThread(threading.Thread):
                     response = "success"
                 self.tcpClientSocket.send(response.encode())
             
-            elif response[0] == "login":
+            elif message[0] == "login":
                 if not db.is_account_exist(message[1]):
                     response = "not_exist"
                 elif db.get_password(message[1]) != message[2]:
@@ -35,7 +39,7 @@ class ClientThread(threading.Thread):
                     response = "success"
                 self.tcpClientSocket.send(response.encode())
 
-            elif response[0] == "search":
+            elif message[0] == "search":
                 if db.is_account_exist(message[1]):
                     if db.is_account_online(message[1]):
                         ip_address = db.get_peer_ip_port(message[1])
@@ -46,14 +50,14 @@ class ClientThread(threading.Thread):
                     response = "not_found"
                 self.tcpClientSocket.send(response.encode())
             
-            elif response[0] == "list":
+            elif message[0] == "list":
                 response = db.get_online_ip()
                 self.tcpClientSocket.send(response.encode())
             
-            elif response[0] == "logout":
+            elif message[0] == "logout":
                 db.user_logout(message[1])
                 self.tcpClientSocket.close()
-                break
+                break'''
 
 if __name__ == "__main__":
     port = 5535        ## temporary

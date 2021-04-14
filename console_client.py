@@ -1,7 +1,5 @@
 import socket
 import time
-import sys
-import os
 import signal
 import sqlite3
 import threading
@@ -30,8 +28,6 @@ server_port = 5535
 # chat_lock = threading.Lock()
 
 
-
-
 # turn into class later
 def initialize_socket():
     global target_user,user,is_connected,conn,c
@@ -53,7 +49,7 @@ def initialize_socket():
     tcp_socket.close()
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp_socket.bind(ADDR)
-    
+
     target_user = input('Who would you talk to (A/B)? ').strip()
 
     listen_thread = Thread(target=socket_listen, args=(tcp_socket, ))
