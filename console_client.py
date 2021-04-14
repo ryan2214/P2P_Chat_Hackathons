@@ -238,4 +238,3 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, sig_handler)
     
     initialize_socket()
-
