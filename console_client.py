@@ -11,7 +11,7 @@ import hashlib
 encode_type = 'utf-8'
 MSG_SIZE = 1024
 global is_exit,user,target_user,is_connected,conn,c,raw_msg
-
+is_server_connected = False
 is_connected = False
 user = ''
 target_user = ''
@@ -24,7 +24,8 @@ c = conn.cursor()
 # hardcode user info 
 # TODO: replaced by sqlite3 ops
 client = {"A":'127.0.0.2',"B":'127.0.0.3'}
-
+server_ip = '127.0.1.1'
+server_port = 5535
 # one lock per chat per user
 # chat_lock = threading.Lock()
 
@@ -39,7 +40,6 @@ def initialize_socket():
     HOST = client[user]
     PORT = 21566
     ADDR = (HOST, PORT)
-    MAX_CONNECTIONS = 50
 
     # db init
     user_name_hash = hashlib.md5(user.encode()).hexdigest()
@@ -49,7 +49,11 @@ def initialize_socket():
 
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp_socket.bind(ADDR)
-
+    connect_to_server(tcp_socket, PORT)
+    tcp_socket.close()
+    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_socket.bind(ADDR)
+    
     target_user = input('Who would you talk to (A/B)? ').strip()
 
     listen_thread = Thread(target=socket_listen, args=(tcp_socket, ))
@@ -86,6 +90,24 @@ def socket_listen(listen_socket, MAX_CONNECTIONS=50):
         send_msg_thread.join()
 
 
+def connect_to_server(chat_socket, PORT):
+        global is_server_connected,is_exit
+        ADDR = (server_ip, server_port)
+        #chat_socket.connect(ADDR)
+        try:
+            is_server_connected = not chat_socket.connect(ADDR) # on success, connect() return 0
+        except Exception:
+            print('server is offline now.')
+        if is_server_connected:
+            print('connected to server')
+
+        if is_server_connected and not is_exit:
+            # tell the server the user is online, by userID
+            # TODO: ask if target of local unsent msg is online
+            send_msg_thread = Thread(target=socket_send_login, args=(chat_socket, ))
+
+            send_msg_thread.start()
+            send_msg_thread.join()
 
 def socket_connect(chat_socket, PORT):
         global is_connected,target_user,is_exit
@@ -110,6 +132,20 @@ def socket_connect(chat_socket, PORT):
             receive_msg_thread.start()
 
             send_msg_thread.join()
+
+def socket_send_login(chat_socket):
+    global user
+    is_sent = False
+    msg = 'login '+user+' '+get_time_stamp()
+    print(msg)
+    try:
+        chat_socket.send(msg.encode(encode_type))
+        is_sent = True
+    except Exception:
+        print('msg cannot reach',target_user,'for now.')
+        is_sent = False
+    if is_sent:
+        print('login success')
 
 def socket_send_msg(chat_socket):
     msg = None

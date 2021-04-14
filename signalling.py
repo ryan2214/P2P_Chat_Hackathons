@@ -56,12 +56,12 @@ class ClientThread(threading.Thread):
                 break
 
 if __name__ == "__main__":
-    port = 5535 ## temporary
+    port = 5535        ## temporary
     host = "127.0.1.1" ## temporary
 
-    print("Centeralized Sever started")
-    print("Cantralized Server IP address: " + host)
-    print("Cantralized Server port number: " + port)
+    print("Signaling Sever started!")
+    print("Signaling Server IP address: " + host)
+    print("Signaling Server port number: " + str(port))
 
     tcpSocket = socket(AF_INET, SOCK_STREAM)
     tcpSocket.bind((host,port))
