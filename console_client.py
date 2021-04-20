@@ -11,8 +11,7 @@ import urllib
 
 encode_type = 'utf-8'
 MSG_SIZE = 1024
-global is_exit,user,target_user,is_connected,conn,c,raw_msg
-is_server_connected = False
+global is_exit,target_user,is_connected
 is_connected = False
 is_talking = False
 user = ''
@@ -20,20 +19,17 @@ target_user = ''
 target_ip = ''
 target_port = 0
 target_found = False
-raw_msg = ''
 is_exit = False
 conn = sqlite3.connect('temp.db')
 c = conn.cursor()
 
-# hardcode user info 
-# TODO: replaced by sqlite3 ops
+# hardcode user ip 
 client = ['127.0.0.2','127.0.0.3']
 server_ip = '127.0.1.1'
 server_port = 5535
 client_port = 5500
 port_to_server = 5501
-# one lock per chat per user
-# chat_lock = threading.Lock() 
+
 
 def get_outer_ip():
     url = 'http://tool.chinaz.com/'
@@ -69,7 +65,6 @@ def socket_listen(ts, MAX_CONNECTIONS=5):
         send_thread.start()
         send_thread.join()
 
-
 def socket_connect(ts):
         global is_connected,target_user
         ADDR = (target_ip, client_port)
@@ -91,7 +86,6 @@ def socket_connect(ts):
             send_msg_thread.start()
             receive_msg_thread.start()
             send_msg_thread.join()
-
 
 def socket_send_msg(ts):       # send msg to peer
     msg = None
@@ -125,27 +119,27 @@ def recieve_server_msg(s):             # receive msg from server, parse and get 
             print('server goes offline.')
             break
         msg_elements = msg.split(' ')
-        if msg_elements[0] == 'ls':
+        if msg_elements[0] == 'ls':                                     # online list got
             print("now online: ", msg.split(' ',1)[1])
-        elif msg_elements[0] == 'found':
+        elif msg_elements[0] == 'found':                                # target found and online
             target_ip = msg_elements[1].split(':',1)[0]
             target_port = int(msg_elements[1].split(':',1)[1])
             target_found = True
-        elif msg_elements[0] == 'not' and msg_elements[1] == 'online':
+        elif msg_elements[0] == 'not' and msg_elements[1] == 'online':  # target not online
             target_port = -1
-        elif msg_elements[0] == 'not' and msg_elements[1] == 'found':
+        elif msg_elements[0] == 'not' and msg_elements[1] == 'found':   # target not found in db
             target_port = -2
-        elif msg_elements[0] == 'invite': # invite B 127.0.0.3:5501
+        elif msg_elements[0] == 'invite':                     # chat invite from target user with ip:port
             target_user = msg_elements[1]
             target_ip = msg_elements[2].split(':',1)[0]
             target_port = int(msg_elements[2].split(':',1)[1])
             print('receive invitation from',target_user,'accept?(y/n)')
             
-# figure out how to end
-def socket_receive_msg(chat_socket):      # receive msg from peer
-    global target_user,is_exit,raw_msg
+def socket_receive_msg(chat_socket):      # receive msg from peer in chat
+    global target_user,is_exit
     while not is_exit and is_talking:
         msg = ''
+        raw_msg = ''
         try:
             msg = chat_socket.recv(MSG_SIZE)
         except Exception:
@@ -159,8 +153,8 @@ def socket_receive_msg(chat_socket):      # receive msg from peer
 
             write_msg_to_db(target_user, user, 0, time_stamp, 1, raw_msg.rsplit(' ',1)[0])
 
-def send_unsent_msg(ts):
-    unsent_msg = find_unsent_msg_about_target(target_user)
+def send_unsent_msg(ts):                                     # send unsent msg at the beginning of a chat
+    unsent_msg = find_unsent_msg_about_target(target_user)   # better late than never
     for m in unsent_msg:
         msg = m[1]
         time_stamp = m[2]
@@ -186,23 +180,22 @@ def show_msg_history(target):
             else:
                 content = m[0] + ' >'
                 print(content,m[1],'\t',m[2])
-    
     print('-------------history-------------')
             
 
-def get_time_stamp():
+def get_time_stamp():           # get the time now
     now = int(time.time())
     timeArray = time.localtime(now)
     mytime = time.strftime("%Y/%m/%d-%H:%M:%S", timeArray)
     
     return mytime
 
-def init_msg_table():
+def init_msg_table():           # init table if this is the first time, or db does not exist
     global c,conn
     c.execute("create table if not exists msg(fromID text not null,toID text not null,dir text not null,sendTime text not null,isShipped int not null,content text not null)")
     conn.commit()   
 
-def del_msg_table():
+def del_msg_table():            # not used
     global c,conn
     c.execute("drop table msg")
     conn.commit() 
@@ -214,24 +207,23 @@ def insert_one_msg(fromID, toID, dir, sendTime, isShipped, content):
     )
     conn.commit()
 
-def find_msg_about_target(target_username):
+def find_msg_about_target(target_username):        # return target related msg for showing chat history
     global c
     result = c.execute('select fromID,content,sendTime from msg where (fromID=? or toID = ?)',
          (target_username,target_username)).fetchall()
     return result
 
-def find_unsent_msg_about_target(target_username):
+def find_unsent_msg_about_target(target_username):     # return target related unsent msg for sending them
     global c
     result = c.execute('select fromID,content,sendTime from msg where (toID=? and isShipped = ?)',
          (target_username,0)).fetchall()
     return result
 
-def mark_msg_sent():
+def mark_msg_sent():                                # after sending unsent msg, mark them all as sent
     global c
     c.execute('UPDATE msg SET isShipped = ? WHERE isShipped = ?;',(1,0))
 
-def debug():
-    print('is_server_connected=',is_server_connected)
+def debug():                                        # print some debug info
     print('is_connected=',is_connected)
     print('is_talking=',is_talking)
     print('user=',user)
@@ -239,14 +231,13 @@ def debug():
     print('target_ip=',target_ip)
     print('target_port=',target_port)
     print('target_found=',target_found)
-    print('raw_msg=',raw_msg)
     print('is_exit=',is_exit)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGTERM, sig_handler)
 
-    # fetch user IP for people without VPN
+    # fetch user IP for people without VPN, going to need this if not in the localhost test
     #external_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
     #print('IP for user out of China:',external_ip)
     #print('IP for user in China:',get_outer_ip())
@@ -256,8 +247,8 @@ if __name__ == "__main__":
     myip_index = input('Which ip to use(0 or 1)?')
     myip = client[int(myip_index)]
     ADDR = (myip,port_to_server)
-    # s connecting server
-    try:    
+    
+    try:                                                       # s connecting server, login and build connection
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(ADDR)
         s.connect((server_ip,server_port))
@@ -273,30 +264,30 @@ if __name__ == "__main__":
     c = conn.cursor()
     init_msg_table()
 
-    t=threading.Thread(target=recieve_server_msg,args=(s,))
+    t=threading.Thread(target=recieve_server_msg,args=(s,))   # get ready for further server reply from socket s
     t.setDaemon(True)
     t.start()
 
     ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)     # socket between peer
     ts.bind((myip,client_port))
 
-    while True and not is_talking:
+    while True and not is_talking:             # becomes one way trip when talk starts, avoid input conflicts
         cmd = input("""------------------------------------
 Input ls: list online users
 Input t: Talk to someone
 Input e: Exit
 ------------------------------------\n""")
-        if cmd == 'ls':
+        if cmd == 'ls':                                     # list online user (not accurate)
             l_msg = user+' list'
             s.send(l_msg.encode(encode_type))
-        elif cmd == 't':
+        elif cmd == 't':                                   # want a talk
             print("------------------------------------")
             target_found = False
             target_port = 0
-            target_user = input('Who would you talk to (user ID)? ').strip()
+            target_user = input('Who would you talk to (user ID)? ').strip()   # choose chat target
             i_msg = user+' invite '+target_user
             s.send(i_msg.encode(encode_type))
-            while not target_found:
+            while not target_found:                         # waiting for server reply
                 if target_port == -1:
                     print('user not found.')
                     break
@@ -313,16 +304,16 @@ Input e: Exit
             is_talking = True
             r_thread = Thread(target=socket_listen,args=(ts,))
             r_thread.start()
-            r_thread.join()
+            r_thread.join()            # this is the end of program, maybe find a way to do some loop
 
-        elif cmd == 'y':
-            # start connection to target
-            if target_port > 0:     # ready for connection
+        elif cmd == 'y':                # connection confirmed
+                                        # start connecting to target
+            if target_port > 0:         # check if ready for connection
                 print('connecting')
                 is_talking = True
                 c_thread = Thread(target=socket_connect,args=(ts,))
                 c_thread.start()
-                c_thread.join()              
+                c_thread.join()         # this is the end of program, maybe find a way to do some loop     
             else:
                 print('not this time!')
         elif cmd == 'n':    
