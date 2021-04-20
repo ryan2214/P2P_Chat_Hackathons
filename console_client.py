@@ -5,122 +5,94 @@ import sqlite3
 import threading
 from threading import Thread, current_thread
 import hashlib
+import requests
+from lxml import etree
+import urllib
 
 encode_type = 'utf-8'
 MSG_SIZE = 1024
 global is_exit,user,target_user,is_connected,conn,c,raw_msg
 is_server_connected = False
 is_connected = False
+is_talking = False
 user = ''
 target_user = ''
+target_ip = ''
+target_port = 0
+target_found = False
 raw_msg = ''
 is_exit = False
-
+c_socket_server = None  # listening socket
 conn = sqlite3.connect('temp.db')
 c = conn.cursor()
 
 # hardcode user info 
 # TODO: replaced by sqlite3 ops
-client = {"A":'127.0.0.2',"B":'127.0.0.3'}
+client = ['127.0.0.2','127.0.0.3']
 server_ip = '127.0.1.1'
 server_port = 5535
+client_port = 5500
+port_to_server = 5501
 # one lock per chat per user
-# chat_lock = threading.Lock()
+# chat_lock = threading.Lock() 
 
+def init(ADDR):
+    """
+    client init
+    """
+    global c_socket_server                                               # prepare database table
+    c_socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # init socket obj
+    c_socket_server.bind(ADDR)
+    c_socket_server.listen(5)  # max wait number
+    print("client is on air, listening for connections...")
 
-# turn into class later
-def initialize_socket():
-    global target_user,user,is_connected,conn,c
-    # HOST = '127.0.1.1'
-    user = input('Enter your user name(A/B): ').strip()
-    HOST = client[user]
-    PORT = 21566
-    ADDR = (HOST, PORT)
+def get_outer_ip():
+    url = 'http://tool.chinaz.com/'
+    res = requests.get(url=url)
+    html = etree.HTML(res.text)
+    _ip = html.xpath('/html/body/div[2]/div/div[1]/a[2]')[0].text  # check element, copy Xpath
+    #print(_ip)
+    _ip = str(_ip).split(" ")[0]
+    return _ip
 
-    # db init
-    user_name_hash = hashlib.md5(user.encode()).hexdigest()
-    conn = sqlite3.connect(user_name_hash+'.db',check_same_thread=False)
-    c = conn.cursor()
-    init_msg_table()
-
-    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_socket.bind(ADDR)
-    connect_to_server(tcp_socket, PORT)
-    tcp_socket.close()
-    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_socket.bind(ADDR)
-
-    target_user = input('Who would you talk to (A/B)? ').strip()
-
-    listen_thread = Thread(target=socket_listen, args=(tcp_socket, ))
-    connect_thread = Thread(target=socket_connect, args=(tcp_socket, PORT, ))
-
-    connect_thread.start()
-    connect_thread.join()
+def socket_listen(ts, MAX_CONNECTIONS=5):
+    """
+    receive new connections
+    """
+    global is_connected
+    print('waiting for', target_user, 'to accept...')
+    ts.listen(MAX_CONNECTIONS)
     
-    if not is_connected:
-        listen_thread.start()
-        listen_thread.join()
-
-        
-
-
-def socket_listen(listen_socket, MAX_CONNECTIONS=50):
-    global is_exit,target_user
-    listen_socket.listen(MAX_CONNECTIONS)
-    print('Listening...')
-
     while not is_exit:
-        chat_socket, friend_addr = listen_socket.accept()
-        print('Connected to host', friend_addr)
-        show_msg_history(target_user)
-        send_msg_thread = Thread(target=socket_send_msg, args=(chat_socket, ))
-        receive_msg_thread = Thread(
-            target=socket_receive_msg, args=(chat_socket, ))
+        client, _ = ts.accept()  # stop, wait for connection
+        # add to link pool
+        #print(_)
+        is_connected = True
+        # for each client, setup independent thread
+        send_thread = Thread(target=socket_send_msg, args=(client, ))
+        receive_thread = Thread(target=socket_receive_msg, args=(client,))
+        # set as Daemon
+        receive_thread.setDaemon(True)
+        receive_thread.start()
+        send_thread.start()
+        send_thread.join()
 
-        receive_msg_thread.setDaemon(True)
 
-        send_msg_thread.start()
-        receive_msg_thread.start()
-
-        send_msg_thread.join()
-
-
-def connect_to_server(chat_socket, PORT):
-        global is_server_connected,is_exit
-        ADDR = (server_ip, server_port)
-        #chat_socket.connect(ADDR)
+def socket_connect(ts):
+        global is_connected,target_user
+        ADDR = (target_ip, client_port)
+        is_connected = not ts.connect(ADDR)
         try:
-            is_server_connected = not chat_socket.connect(ADDR) # on success, connect() return 0
+            is_connected = not ts.connect(ADDR) # on success, connect() return 0
         except Exception:
-            print('server is offline now.')
-        if is_server_connected:
-            print('connected to server')
-
-        if is_server_connected and not is_exit:
-            # tell the server the user is online, by userID
-            # TODO: ask if target of local unsent msg is online
-            send_msg_thread = Thread(target=socket_send_login, args=(chat_socket, ))
-
-            send_msg_thread.start()
-            send_msg_thread.join()
-
-def socket_connect(chat_socket, PORT):
-        global is_connected,target_user,is_exit
-        friend_ip = client[target_user]
-        ADDR = (friend_ip, PORT)
-
-        try:
-            is_connected = not chat_socket.connect(ADDR) # on success, connect() return 0
-        except Exception:
-            print(target_user, 'is offline now, prepare to listen.')
+            print(target_user, 'is offline now, try next time.')
         if is_connected:
             print('connected to',target_user)
             show_msg_history(target_user)
         while is_connected and not is_exit:
-            send_msg_thread = Thread(target=socket_send_msg, args=(chat_socket, ))
+            send_msg_thread = Thread(target=socket_send_msg, args=(ts, ))
             receive_msg_thread = Thread(
-                target=socket_receive_msg, args=(chat_socket, ))
+                target=socket_receive_msg, args=(ts, ))
 
             receive_msg_thread.setDaemon(True)
 
@@ -129,30 +101,17 @@ def socket_connect(chat_socket, PORT):
 
             send_msg_thread.join()
 
-def socket_send_login(chat_socket):
-    global user
-    is_sent = False
-    msg = 'login '+user+' '+get_time_stamp()
-    print(msg)
-    try:
-        chat_socket.send(msg.encode(encode_type))
-        is_sent = True
-    except Exception:
-        print('msg cannot reach',target_user,'for now.')
-        is_sent = False
-    if is_sent:
-        print('login success')
 
-def socket_send_msg(chat_socket):
+def socket_send_msg(ts):       # send msg to peer
     msg = None
-    global is_exit,user,target_user
+    global is_exit,user,target_user,is_talking
     
-    while msg!='/exit' and not is_exit:
+    while msg!='/exit' and not is_exit and is_talking:
         msg = input().strip()
         time_stamp = get_time_stamp()
         msg_assmbly = msg+' '+time_stamp
         try:
-            chat_socket.send(msg_assmbly.encode(encode_type))
+            ts.send(msg_assmbly.encode(encode_type))
         except Exception:
             print('msg cannot reach',target_user,'for now.')
             is_exit = True
@@ -160,11 +119,41 @@ def socket_send_msg(chat_socket):
         write_msg_to_db(user, target_user, 1, time_stamp, is_sent, msg) # update msg sent or not sent to local db
     is_exit = True
 
+def recieve_server_msg(s):             # receive msg from server, parse and get reply info
+    global is_exit,user,target_ip,target_port,target_found,target_user
 
-# figure out how to end
-def socket_receive_msg(chat_socket):
-    global target_user,is_exit,raw_msg
     while not is_exit:
+        try:
+            msg = s.recv(MSG_SIZE).decode(encoding=encode_type)
+        except Exception:
+            print('server goes offline.')
+            is_exit = True
+            break
+        if len(msg) == 0:                      # connection error, exit
+            s.close()
+            print('server goes offline.')
+            break
+        msg_elements = msg.split(' ')
+        if msg_elements[0] == 'ls':
+            print("now online: ", msg.split(' ',1)[1])
+        elif msg_elements[0] == 'found':
+            target_ip = msg_elements[1].split(':',1)[0]
+            target_port = int(msg_elements[1].split(':',1)[1])
+            target_found = True
+        elif msg_elements[0] == 'not' and msg_elements[1] == 'online':
+            target_port = -1
+        elif msg_elements[0] == 'not' and msg_elements[1] == 'found':
+            target_port = -2
+        elif msg_elements[0] == 'invite': # invite B 127.0.0.3:5501
+            target_user = msg_elements[1]
+            target_ip = msg_elements[2].split(':',1)[0]
+            target_port = int(msg_elements[2].split(':',1)[1])
+            print('receive invitation from',target_user,'accept?(y/n)')
+            
+# figure out how to end
+def socket_receive_msg(chat_socket):      # receive msg from peer
+    global target_user,is_exit,raw_msg
+    while not is_exit and is_talking:
         msg = ''
         try:
             msg = chat_socket.recv(MSG_SIZE)
@@ -178,6 +167,8 @@ def socket_receive_msg(chat_socket):
             time_stamp = raw_msg.rsplit(' ',1)[1]
 
             write_msg_to_db(target_user, user, 0, time_stamp, 1, raw_msg.rsplit(' ',1)[0])
+
+
 
 def sig_handler(signum, frame):
     global is_exit
@@ -199,8 +190,6 @@ def show_msg_history(target):
                 print(content,m[1],'\t',m[2])
     
     print('-------------history-------------')
-
-
             
 
 def get_time_stamp():
@@ -232,9 +221,125 @@ def find_msg_about_target(target_username):
     result = c.execute('select fromID,content,sendTime from msg where (fromID=? or toID = ?)',
          (target_username,target_username)).fetchall()
     return result
+def debug():
+    print('is_server_connected=',is_server_connected)
+    print('is_connected=',is_connected)
+    print('is_talking=',is_talking)
+    print('user=',user)
+    print('target_user=',target_user)
+    print('target_ip=',target_ip)
+    print('target_port=',target_port)
+    print('target_found=',target_found)
+    print('raw_msg=',raw_msg)
+    print('is_exit=',is_exit)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGTERM, sig_handler)
+
+    # fetch user IP for people without VPN
+    #external_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
+    #print('IP for user out of China:',external_ip)
+    #print('IP for user in China:',get_outer_ip())
+    #global target_user,user,is_connected,conn,c
+    # HOST = '127.0.1.1'
+    user = input('Enter your user name: ').strip()
+    myip_index = input('Which ip to use(0 or 1)?')
+    myip = client[int(myip_index)]
+    ADDR = (myip,port_to_server)
+    # s connecting server
+    try:    
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(ADDR)
+        s.connect((server_ip,server_port))
+        login_msg = user+' login'
+        s.sendall(login_msg.encode(encode_type))
+        print(s.recv(1024).decode(encoding=encode_type))
+    except Exception:
+        print('cannot reach server now.')
+
+    # db init (need username for index)
+    user_name_hash = hashlib.md5(user.encode()).hexdigest()
+    conn = sqlite3.connect(user_name_hash+'.db',check_same_thread=False)
+    c = conn.cursor()
+    init_msg_table()
+
+    t=threading.Thread(target=recieve_server_msg,args=(s,))
+    t.setDaemon(True)
+    t.start()
+
+    ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)     # socket between peer
+    ts.bind((myip,client_port))
+    #tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #tcp_socket.bind(ADDR)
+    #connect_to_server(tcp_socket, PORT)
+    #tcp_socket.close()
+    #tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #tcp_socket.bind(ADDR)
+ 
+    '''
+    listen_thread = Thread(target=socket_listen, args=(tcp_socket, ))
+    connect_thread = Thread(target=socket_connect, args=(tcp_socket, PORT, ))
+
+    connect_thread.start()
+    connect_thread.join()
     
-    initialize_socket()
+    if not is_connected:
+        listen_thread.start()
+        listen_thread.join()
+    '''
+    while True:
+        cmd = input("""------------------------------------
+Input ls: list online users
+Input t: Talk to someone
+Input e: Exit
+------------------------------------\n""")
+        if cmd == 'ls':
+            l_msg = user+' list'
+            s.send(l_msg.encode(encode_type))
+        elif cmd == 't':
+            print("------------------------------------")
+            target_found = False
+            target_port = 0
+            target_user = input('Who would you talk to (user ID)? ').strip()
+            i_msg = user+' invite '+target_user
+            s.send(i_msg.encode(encode_type))
+            while not target_found:
+                if target_port == -1:
+                    print('user not found.')
+                    break
+                time.sleep(1)
+            if target_port == -1:
+                print('user not online now, try next time. leave some msg and quit by input /exit')
+                continue               # go back to main menu
+            if target_port == -2:
+                print('user not found in registeration log.')
+                continue               # go back to main menu
+            # now the target ip and port found
+            #print(target_user,target_ip,target_port)
+            # finally, build connection between peers
+            #show_msg_history(target_user)
+            is_talking = True
+            #while is_talking:
+            r_thread = Thread(target=socket_listen,args=(ts,))
+            r_thread.setDaemon(True)
+            r_thread.start()
+
+
+        elif cmd == 'y':
+            # start connection to target
+            if target_port > 0:     # ready for connection
+                print('connecting')
+                socket_connect(ts)
+            else:
+                print('not this time!')
+        elif cmd == 'n':    
+            if target_port >0:
+                n_msg = user+' refuse '+target_user
+                s.send(n_msg.encode(encode_type))
+            else:
+                print('do not input this!')
+        elif cmd == 'd':
+            debug()
+        elif cmd == 'e':
+            exit()
