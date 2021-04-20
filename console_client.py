@@ -59,6 +59,7 @@ def socket_listen(ts, MAX_CONNECTIONS=5):
         print('socket accepted from',_)
         is_connected = True
         show_msg_history(target_user)
+        send_unsent_msg(client)
         # for each client, setup independent thread
         send_thread = Thread(target=socket_send_msg, args=(client, ))
         receive_thread = Thread(target=socket_receive_msg, args=(client,))
@@ -80,6 +81,7 @@ def socket_connect(ts):
             print('connected to',target_user)
             is_talking = True
             show_msg_history(target_user)
+            send_unsent_msg(ts)
         while is_connected and not is_exit:
             send_msg_thread = Thread(target=socket_send_msg, args=(ts, ))
             receive_msg_thread = Thread(
@@ -157,7 +159,14 @@ def socket_receive_msg(chat_socket):      # receive msg from peer
 
             write_msg_to_db(target_user, user, 0, time_stamp, 1, raw_msg.rsplit(' ',1)[0])
 
-
+def send_unsent_msg(ts):
+    unsent_msg = find_unsent_msg_about_target(target_user)
+    for m in unsent_msg:
+        msg = m[1]
+        time_stamp = m[2]
+        msg_assmbly = msg+' '+time_stamp
+        ts.send(msg_assmbly.encode(encode_type))
+    mark_msg_sent()
 
 def sig_handler(signum, frame):
     global is_exit
@@ -210,6 +219,17 @@ def find_msg_about_target(target_username):
     result = c.execute('select fromID,content,sendTime from msg where (fromID=? or toID = ?)',
          (target_username,target_username)).fetchall()
     return result
+
+def find_unsent_msg_about_target(target_username):
+    global c
+    result = c.execute('select fromID,content,sendTime from msg where (toID=? and isShipped = ?)',
+         (target_username,0)).fetchall()
+    return result
+
+def mark_msg_sent():
+    global c
+    c.execute('UPDATE msg SET isShipped = ? WHERE isShipped = ?;',(1,0))
+
 def debug():
     print('is_server_connected=',is_server_connected)
     print('is_connected=',is_connected)
@@ -258,26 +278,8 @@ if __name__ == "__main__":
     t.start()
 
     ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)     # socket between peer
-    #ts.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     ts.bind((myip,client_port))
-    #tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #tcp_socket.bind(ADDR)
-    #connect_to_server(tcp_socket, PORT)
-    #tcp_socket.close()
-    #tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #tcp_socket.bind(ADDR)
- 
-    '''
-    listen_thread = Thread(target=socket_listen, args=(tcp_socket, ))
-    connect_thread = Thread(target=socket_connect, args=(tcp_socket, PORT, ))
 
-    connect_thread.start()
-    connect_thread.join()
-    
-    if not is_connected:
-        listen_thread.start()
-        listen_thread.join()
-    '''
     while True and not is_talking:
         cmd = input("""------------------------------------
 Input ls: list online users
@@ -308,9 +310,7 @@ Input e: Exit
             # now the target ip and port found
             #print(target_user,target_ip,target_port)
             # finally, build connection between peers
-            #show_msg_history(target_user)
             is_talking = True
-            #while is_talking:
             r_thread = Thread(target=socket_listen,args=(ts,))
             r_thread.start()
             r_thread.join()
