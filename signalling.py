@@ -94,6 +94,13 @@ def message_handle(client,userIP):
                     print('user',target,'not found')
                     client.sendall("not found".encode(encoding=encode_type))
                     continue
+            elif ops[0] == 'r':                                         # talk refused
+                target = ops.split(' ')[1]
+                if is_account_online(target):
+                    t_tar = g_conn_pool[target]
+                    ref_msg = 'refused from '+userID
+                    print('sending', ref_msg,'to', target)
+                    t_tar.sendall(ref_msg.encode(encoding=encode_type))
             elif ops[0] == 'l':
                 result = get_online_user()
                 userline = 'ls '

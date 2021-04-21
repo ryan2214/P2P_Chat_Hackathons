@@ -29,7 +29,7 @@ server_ip = '127.0.1.1'
 server_port = 5535
 client_port = 5500
 port_to_server = 5501
-
+temp_port = 5502
 
 def get_outer_ip():
     url = 'http://tool.chinaz.com/'
@@ -44,14 +44,14 @@ def socket_listen(ts, MAX_CONNECTIONS=5):
     """
     receive new connections
     """
-    global is_connected
+    global is_connected,target_port
     ts.listen(MAX_CONNECTIONS)
     
-    while not is_exit:
-        print('waiting for', target_user, 'to accept...')
-        client, _ = ts.accept()  # stop, wait for connection
-        # add to link pool
-        #print(_)
+    print('waiting for', target_user, 'to accept...')
+    client, _ = ts.accept()  # stop, wait for connection
+    # add to link pool
+    #print(_)
+    if target_port > 0 :
         print('socket accepted from',_)
         is_connected = True
         show_msg_history(target_user)
@@ -66,26 +66,23 @@ def socket_listen(ts, MAX_CONNECTIONS=5):
         send_thread.join()
 
 def socket_connect(ts):
-        global is_connected,target_user
-        ADDR = (target_ip, client_port)
-        try:
-            is_connected = not ts.connect(ADDR) # on success, connect() return 0
-        except Exception:
-            print(target_user, 'is offline now, try next time.')
-        if is_connected:
-            print('connected to',target_user)
-            is_talking = True
-            show_msg_history(target_user)
-            send_unsent_msg(ts)
-        while is_connected and not is_exit:
-            send_msg_thread = Thread(target=socket_send_msg, args=(ts, ))
-            receive_msg_thread = Thread(
-                target=socket_receive_msg, args=(ts, ))
+    global is_connected,target_user
+    ADDR = (target_ip, client_port)
+    try:
+        is_connected = not ts.connect(ADDR) # on success, connect() return 0
+    except Exception:
+        print(target_user, 'is offline now, try next time.')
+    if is_connected:
+        print('connected to',target_user)
+        show_msg_history(target_user)
+        send_unsent_msg(ts)
+        send_msg_thread = Thread(target=socket_send_msg, args=(ts, ))
+        receive_msg_thread = Thread(target=socket_receive_msg, args=(ts, ))
 
-            receive_msg_thread.setDaemon(True)
-            send_msg_thread.start()
-            receive_msg_thread.start()
-            send_msg_thread.join()
+        receive_msg_thread.setDaemon(True)
+        send_msg_thread.start()
+        receive_msg_thread.start()
+        send_msg_thread.join()
 
 def socket_send_msg(ts):       # send msg to peer
     msg = None
@@ -134,6 +131,10 @@ def recieve_server_msg(s):             # receive msg from server, parse and get 
             target_ip = msg_elements[2].split(':',1)[0]
             target_port = int(msg_elements[2].split(':',1)[1])
             print('receive invitation from',target_user,'accept?(y/n)')
+        elif msg_elements[0] == 'refused':                     # chat invite from target user with ip:port
+            target_port = -1
+            temps = socket.socket(socket.AF_INET, socket.SOCK_STREAM)     # socket between peer
+            temps.bind((myip,temp_port))
             
 def socket_receive_msg(chat_socket):      # receive msg from peer in chat
     global target_user,is_exit
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)     # socket between peer
     ts.bind((myip,client_port))
 
-    while True and not is_talking:             # becomes one way trip when talk starts, avoid input conflicts
+    while True and not is_talking:             # when talk starts, cycle ends to avoid input conflicts
         cmd = input("""------------------------------------
 Input ls: list online users
 Input t: Talk to someone
