@@ -39,7 +39,7 @@ git push heroku [current branch]:main
 
 # Suggested Roles:
 
-## User:
+## User: console_client.py
 
 Socket: send and receive msg by IP to server and other peers.
 
@@ -51,7 +51,7 @@ SQLite3: Store chat content locally, impl by sqlite3.
 
 ![preview_1](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_1.png?raw=true)
 
-## Server:
+## Server: signalling.py
 
 Socket: Receive online status sent by users, turn the user offline when connection to the user ends, notify invited users on receive invitation from user.
 
