@@ -49,7 +49,6 @@ SQLite3: Store chat content locally, impl by sqlite3.
 
           msg table: fromID text, toID text,dir text(0:in,1:out), sendTime text,isShipped int(0:not,1:yes),content text
 
-![preview_1](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_1.png?raw=true)
 
 ## Server: signalling.py
 
