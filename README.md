@@ -49,7 +49,15 @@ SQLite3: Store chat content locally, impl by sqlite3.
 
           msg table: fromID text, toID text,dir text(0:in,1:out), sendTime text,isShipped int(0:not,1:yes),content text
 
+Program Logic: entering a talk state will end the main cmd loop, by 't' and 'y' for 2 peer.
 
+          ls: list online user, fetch from server and print.
+          t: send invitation to talk to a peer, fetch peer address from server, and listen for peer connection.
+          y: only available when receiving invitation, from the info provided by server, try connecting to the peer who sent the inviatation.
+          n: only available when receiving invitation, refuse invitation.
+          d: print some debug parameter.
+          e: exit from program
+                  
 ## Server: signalling.py
 
 Socket: Receive online status sent by users, turn the user offline when connection to the user ends, notify invited users on receive invitation from user.
