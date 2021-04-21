@@ -41,24 +41,21 @@ git push heroku [current branch]:main
 
 ## User:
 
-Socket: send msg by IP to other peers,
+Socket: send and receive msg by IP to server and other peers.
 
-Flask Web Application: Interface for chat, (multiple user), show recent chat, access to chat history.
+Python Console Application: Interface for chat, show online user, access to chat history in connection setup, send messaage.
 
-Web SQL: Store chat content locally, impl by js.
+SQLite3: Store chat content locally, impl by sqlite3.
 
-          message table: fromID, toID, direction, isShipped, timeStamp,  content
-          
-          peer table: peerID, peerAddr
+          msg table: fromID text, toID text,dir text(0:in,1:out), sendTime text,isShipped int(0:not,1:yes),content text
 
 ![preview_1](https://github.com/ryan2214/P2P_Chat_Hackathons/blob/main/pics/preview_1.png?raw=true)
 
 ## Server:
 
-Socket: Receive online(/offline) status sent by users, notify interesting users on receive online "hello". (update offline by onunload?)
+Socket: Receive online status sent by users, turn the user offline when connection to the user ends, notify invited users on receive invitation from user.
 
 SQL Lite: Keep track of all the users status (online/offline).
    
-          peer table: peerID, peerAddr, isOnline, (interestPeerList)*
-          
-          *(interestPeerList means all the peers called this peer during offline, store their peerID in this list. Could SQL store list as parameter?)
+          user table: userID TEXT, userIP TEXT, Status INT(1:online,0:offline)
+
